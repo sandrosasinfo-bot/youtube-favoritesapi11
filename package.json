@@ -1,0 +1,13 @@
+{
+  "name": "youtube-api",                       // Nome do seu projeto
+  "version": "1.0.0",                          // Versão do seu projeto
+  "description": "API para buscar vídeos da playlist do YouTube",  // Descrição do seu projeto
+  "main": "server.js",                         // Arquivo principal do seu projeto
+  "scripts": {
+    "start": "node server.js",                 // Comando para iniciar o servidor
+    "build": "npm install",                    // Comando para instalar dependências
+    "dev": "nodemon server.js"                 // Comando para rodar em desenvolvimento com nodemon (se necessário)
+  },
+  "dependencies": {
+    "express": "^4.17.1",                      // Dependência do Express
+    "axios": "^0.21.1"                         // Dependência do Axio
