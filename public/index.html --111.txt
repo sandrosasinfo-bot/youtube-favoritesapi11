@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minha Playlist</title>
+    <style>
+        /* Estilos Globais */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+        h1 {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        /* Estilo para a playlist */
+        #playlist {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .song {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 10px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .song:hover {
+            transform: scale(1.05);
+        }
+
+        .song img {
+            width: 100px;
+            height: 100px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .song span {
+            margin-top: 10px;
+            text-align: center;
+            font-size: 14px;
+            color: #333;
+            max-width: 100px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Estilos do Player */
+      #player-container {
+    width: 25%;              /* O player ocupa 25% da largura da tela (metade do tamanho atual) */
+    height: 300px;           /* A altura continua 300px */
+    margin: 0 auto;          /* Centraliza o player horizontalmente */
+    background: #000;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    position: fixed;         /* Fixa o player na tela */
+    top: 50%;                /* Coloca no centro vertical */
+    left: 50%;               /* Coloca no centro horizontal */
+    transform: translate(-50%, -50%); /* Ajusta para centralizar corretamente */
+    z-index: 1000;           /* Garante que o player fique acima dos outros elementos */
+}
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .controls button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 50%;
+            margin: 0 10px;
+        }
+
+        .controls button:hover {
+            background-color: #0056b3;
+        }
+
+        .controls input[type="range"] {
+            width: 150px;
+            margin-left: 10px;
+        }
+
+        /* Estilos para o controle de fundo */
+        #background-color {
+            margin-top: 20px;
+            margin-left: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Minha Playlist do YouTube</h1>
+
+    <!-- Cor de fundo -->
+    <label for="background-color">Escolha a cor de fundo:</label>
+    <input type="color" id="background-color" name="background-color" value="#f5f5f5">
+
+    <!-- Playlist -->
+    <div id="playlist"></div>
+
+    <!-- Player -->
+    <div id="player-container"></div>
+
+    <!-- Controles -->
+    <div class="controls">
+        <button id="prev">⏪</button>
+        <button id="play-pause">▶️</button>
+        <button id="next">⏩</button>
+        <input type="range" id="volume" min="0" max="100" value="50">
+    </div>
+
+    <script>
+        let songs = [];
+        let currentSongIndex = 0;
+        let player;
+
+        // Mudar a cor de fundo
+        document.getElementById('background-color').addEventListener('input', (e) => {
+            document.body.style.backgroundColor = e.target.value;
+        });
+
+        // Função para permitir arrastar o player
+        const dragElement = (elmnt) => {
+            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+            elmnt.onmousedown = dragMouseDown;
+
+            function dragMouseDown(e) {
+                e = e || window.event;
+                e.preventDefault();
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                document.onmouseup = closeDragElement;
+                document.onmousemove = elementDrag;
+            }
+
+            function elementDrag(e) {
+                e = e || window.event;
+                e.preventDefault();
+                pos1 = pos3 - e.clientX;
+                pos2 = pos4 - e.clientY;
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+                elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+            }
+
+            function closeDragElement() {
+                document.onmouseup = null;
+                document.onmousemove = null;
+            }
+        };
+
+        // Inicializar a função de arraste para o player
+        dragElement(document.getElementById("player-container"));
+
+        // Buscar a playlist
+        async function fetchPlaylist() {
+            const response = await fetch('/api/playlist');
+            songs = await response.json();
+            renderPlaylist();
+        }
+
+        // Renderizar a playlist
+        function renderPlaylist() {
+            const playlistDiv = document.getElementById('playlist');
+            playlistDiv.innerHTML = '';
+
+            songs.forEach((song, index) => {
+                const songDiv = document.createElement('div');
+                songDiv.className = 'song';
+                songDiv.innerHTML = `
+                    <img src="${song.thumbnail}" alt="${song.title}">
+                    <span>${song.title}</span>
+                `;
+                songDiv.addEventListener('click', () => playSong(index));
+                playlistDiv.appendChild(songDiv);
+            });
+        }
+
+        // Reproduzir a música
+        function playSong(index) {
+            if (player) {
+                player.loadVideoById(songs[index].videoId);
+            } else {
+                initPlayer(songs[index].videoId);
+            }
+            currentSongIndex = index;
+        }
+
+        // Inicializar o player
+        function initPlayer(videoId) {
+            player = new YT.Player('player-container', {
+                videoId: videoId,
+                events: {
+                    'onStateChange': onPlayerStateChange,
+                },
+            });
+        }
+
+        // Controle do estado do player
+        function onPlayerStateChange(event) {
+            if (event.data === YT.PlayerState.ENDED) {
+                nextSong();
+            }
+        }
+
+        // Próxima música
+        function nextSong() {
+            currentSongIndex = (currentSongIndex + 1) % songs.length;
+            playSong(currentSongIndex);
+        }
+
+        // Música anterior
+        function prevSong() {
+            currentSongIndex = (currentSongIndex - 1 + songs.length) % songs.length;
+            playSong(currentSongIndex);
+        }
+
+        // Play/Pause
+        document.getElementById('play-pause').addEventListener('click', () => {
+            if (player) {
+                if (player.getPlayerState() === YT.PlayerState.PLAYING) {
+                    player.pauseVideo();
+                } else {
+                    player.playVideo();
+                }
+            }
+        });
+
+        // Controle de volume
+        document.getElementById('volume').addEventListener('input', (e) => {
+            if (player) {
+                player.setVolume(e.target.value);
+            }
+        });
+
+        // Carregar a playlist ao carregar a página
+        fetchPlaylist();
+    </script>
+
+    <!-- Carregar a API do YouTube -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+</body>
+</html>
